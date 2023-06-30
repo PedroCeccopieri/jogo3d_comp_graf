@@ -8,10 +8,10 @@ class Hole: public Entity {
 
     public:
 
-        Hole(float x, float y, float z): Entity(x,y,z) {
+        Hole(float x, float y, float z, float w, float d, std::vector<unsigned int> tId): Entity(x,y,z,tId) {
             
             scale = 4;
-            wHitbox = 0.3, hHitbox = 1;
+            wHitbox = w, hHitbox = 1, dHitbox = d;
         }
 
         void animate() {
@@ -21,15 +21,17 @@ class Hole: public Entity {
 
         void draw() {
 
+            color(255,255,255);
+            glBindTexture(GL_TEXTURE_2D, texId[1]);
+            
             glPushMatrix();
 
-            glTranslatef(posx,posy-4,posz);
+            glTranslatef(posx,posy,posz);
             glScalef(scale,scale,scale);
 
             glScalef(wHitbox,hHitbox,dHitbox);
 
-            color(0,0,0);
-            drawSquare(true);
+            drawCube(true);
 
             glPopMatrix();
         }

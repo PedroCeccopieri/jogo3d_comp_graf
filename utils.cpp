@@ -36,15 +36,169 @@ void drawSquare(bool full) {
 }
 
 void drawCube(bool full) {
-	if (full) glutSolidCube(1);
-	else glutWireCube(1);
+
+	// glTexCoord2d(1,1);
+	// glTexCoord2d(0,1);
+	// glTexCoord2d(0,0);
+	// glTexCoord2d(1,0);
+
+	// glTexCoord2d(0,0);
+	// glTexCoord2d(1,0);
+	// glTexCoord2d(1,1);
+	// glTexCoord2d(0,1);
+
+	if (full) {
+		glNormal3d(0,0,1);
+		glBegin(GL_QUADS);
+		glTexCoord2d(1,1);
+		glVertex3d(-0.5,-0.5,0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(0.5,-0.5,0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(0.5,0.5,0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(-0.5,0.5,0.5);
+		glEnd();
+
+		glNormal3d(0,0,-1);
+		glBegin(GL_QUADS);
+		glTexCoord2d(1,1);
+		glVertex3d(0.5,-0.5,-0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(-0.5,-0.5,-0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(-0.5,0.5,-0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(0.5,0.5,-0.5);
+		glEnd();
+
+		glNormal3d(1,0,0);
+		glBegin(GL_QUADS);
+		glTexCoord2d(1,1);
+		glVertex3d(0.5,-0.5,0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(0.5,-0.5,-0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(0.5,0.5,-0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(0.5,0.5,0.5);
+		glEnd();
+
+		glNormal3d(-1,0,0);
+		glBegin(GL_QUADS);
+		glTexCoord2d(1,1);
+		glVertex3d(-0.5,-0.5,-0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(-0.5,-0.5,0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(-0.5,0.5,0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(-0.5,0.5,-0.5);
+		glEnd();
+
+		glNormal3d(0,1,0);
+		glBegin(GL_QUADS);
+		glTexCoord2d(1,1);
+		glVertex3d(-0.5,0.5,0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(0.5,0.5,0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(0.5,0.5,-0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(-0.5,0.5,-0.5);
+		glEnd();
+
+		glNormal3d(0,-1,0);
+		glBegin(GL_QUADS);
+		glTexCoord2d(1,1);
+		glVertex3d(-0.5,-0.5,-0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(0.5,-0.5,-0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(0.5,-0.5,0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(-0.5,-0.5,0.5);
+		glEnd();
+	} else {
+		glNormal3d(0,0,1);
+		glBegin(GL_LINE_LOOP);
+		glTexCoord2d(1,1);
+		glVertex3d(-0.5,-0.5,0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(0.5,-0.5,0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(0.5,0.5,0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(-0.5,0.5,0.5);
+		glEnd();
+
+		glNormal3d(0,0,-1);
+		glBegin(GL_LINE_LOOP);
+		glTexCoord2d(1,1);
+		glVertex3d(0.5,-0.5,-0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(-0.5,-0.5,-0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(-0.5,0.5,-0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(0.5,0.5,-0.5);
+		glEnd();
+
+		glNormal3d(1,0,0);
+		glBegin(GL_LINE_LOOP);
+		glTexCoord2d(1,1);
+		glVertex3d(0.5,-0.5,0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(0.5,-0.5,-0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(0.5,0.5,-0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(0.5,0.5,0.5);
+		glEnd();
+
+		glNormal3d(-1,0,0);
+		glBegin(GL_LINE_LOOP);
+		glTexCoord2d(1,1);
+		glVertex3d(-0.5,-0.5,-0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(-0.5,-0.5,0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(-0.5,0.5,0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(-0.5,0.5,-0.5);
+		glEnd();
+
+		glNormal3d(0,1,0);
+		glBegin(GL_LINE_LOOP);
+		glTexCoord2d(1,1);
+		glVertex3d(-0.5,0.5,0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(0.5,0.5,0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(0.5,0.5,-0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(-0.5,0.5,-0.5);
+		glEnd();
+
+		glNormal3d(0,-1,0);
+		glBegin(GL_LINE_LOOP);
+		glTexCoord2d(1,1);
+		glVertex3d(-0.5,-0.5,-0.5);
+		glTexCoord2d(0,1);
+		glVertex3d(0.5,-0.5,-0.5);
+		glTexCoord2d(0,0);
+		glVertex3d(0.5,-0.5,0.5);
+		glTexCoord2d(1,0);
+		glVertex3d(-0.5,-0.5,0.5);
+		glEnd();
+	}
 }
 
-void drawText(int x, int y, char *string) {
+void drawText(float x, float y, float z, char *string) {
   color(0,0,0);
-  glRasterPos3f(x, y, 10);
+  glRasterPos3f(x, y, z);
   int len, i;
-  len = (int)strlen(string);
+  len = (float)strlen(string);
   for (i = 0; i < len; i++) {
     glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, string[i]);
   }

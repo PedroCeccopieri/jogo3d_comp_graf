@@ -3,12 +3,12 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
-#include <cstring>
 #include <math.h>
 #include <vector>
+#include <fstream>
+#include <filesystem>
 
-#include "Background.h"
-
+#include "Skybox.h"
 #include "Entity.h"
 #include "Character.h"
 #include "Coin.h"
@@ -16,53 +16,120 @@
 #include "Hole.h"
 #include "utils.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 int width = 500;
 int height = 500;
 float aspect = width / height;
 
 int frame = 0;
 
-float x_min = -18, y_min = -18;
-float x_max = 18, y_max = 18;
+int skyboxSize = 300;
 
-int qnt = 10;
+float xmax = skyboxSize/2, zmax = skyboxSize/2;
+float xmin = -skyboxSize/2, zmin = -skyboxSize/2;
 
-int previousScreen = -1, currentScreen, nextScreen, furthestScreen = -1;
+float rcamera = 140;
+float xcameraPos = 30, ycameraPos = 30, zcameraPos = 40;
+float xcameraFocus = 0, ycameraFocus = 0, zcameraFocus = 0;
+bool cameras[4] = {false,false,false,true};
 
-float xcamera = 0, ycamera = 0, zcamera = 30;
+float ambientLight0[4] = {0.7, 0.7, 0.7, 1.0};
+float diffuseLight0[4] = {0.7, 0.7, 0.7, 1.0};
+float specularLight0[4] = {0.2, 0.2, 0.2, 1.0};
+float posLight0[4] = {0.0, 1.0, 0.0, 0.0};
+
+float ambientLight1[4] = {0.3, 0.3, 0.3, 1.0};
+float diffuseLight1[4] = {0.3, 0.3, 0.3, 1.0};
+float specularLight1[4] = {0.3, 0.3, 0.3, 1.0};
+float posLight1[4] = {0, 0.1, 0, 1.0};
 
 bool keystates[256];
 
 bool newScreen = true;
-int coinsNumber;
 
-Background background(x_max, y_max, qnt);
+int coinsLimit = 20, bulletsLimit = 20, holesLimit = 5;
+int holeSize = 2;
 
-Character character(-10,-8,10);
+std::string path = std::filesystem::current_path().string() + "\\textures\\";
+
+std::vector<unsigned int> characterTexture;
+std::vector<unsigned int> skyboxTexture;
+std::vector<unsigned int> coinTexture;
+std::vector<unsigned int> bulletTexture;
+std::vector<unsigned int> holeTexture;
+
+Skybox *skybox;
+Character *character;
 
 std::vector<Coin> coins;
 std::vector<Bullet> bullets;
 std::vector<Hole> holes;
 
 void refresh();
-void generateScreen(int screen);
+void generateCoins();
+void generateBullets();
+void checkBulletsOut();
+void generateHoles();
+void resetCameras();
 
 void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	std::string score = "Score: " + std::to_string(character.getPoints());
+	std::string score = "Score: " + std::to_string((*character).getPoints());
 	char* ca = new char[score.length() + 1];
 	strcpy(ca, score.c_str());
-	drawText(xcamera-10,10,ca);
-
-	background.draw();
-	character.draw();
+	drawText((*character).getPosx(),(*character).getPosy() + 8,(*character).getPosz(),ca);
+	
+	(*skybox).draw();
+	(*character).draw();
 
 	for (int i = 0; i < coins.size(); i++) coins[i].draw();
-	for (int i = 0; i < bullets.size(); i++) bullets[i].draw();
 	for (int i = 0; i < holes.size(); i++) holes[i].draw();
+	for (int i = 0; i < bullets.size(); i++) bullets[i].draw();
+	
+	refresh();
+
+	if (cameras[0]) {
+		xcameraPos = (*character).getPosx();
+		ycameraPos = (*character).getPosy() + 4;
+		zcameraPos = (*character).getPosz();
+		xcameraFocus = (*character).getPosx() + 30*cos(-(*character).getRotation());
+		ycameraFocus = (*character).getPosy();
+		zcameraFocus = (*character).getPosz() + 30*sin(-(*character).getRotation());
+	}
+
+	if (cameras[1]) {
+		xcameraPos = (*character).getPosx();
+		ycameraPos = (*character).getPosy() + 4;
+		zcameraPos = (*character).getPosz();
+		xcameraFocus = (*character).getPosx() + 30*cos(-(*character).getRotation() + M_PI);
+		ycameraFocus = (*character).getPosy();
+		zcameraFocus = (*character).getPosz() + 30*sin(-(*character).getRotation() + M_PI);
+	}
+	
+	if (cameras[2]) {
+		xcameraPos = 30*cos(rcamera*M_PI/180);
+		ycameraPos = 30;
+		zcameraPos = 30*sin(rcamera*M_PI/180);
+		xcameraFocus = 0;
+		ycameraFocus = 0;
+		zcameraFocus = 0;
+	}
+
+	if (cameras[3]) {
+		xcameraPos = (*character).getPosx() + 30*cos(-(*character).getRotation() + M_PI);
+		ycameraPos = (*character).getPosy() + 10;
+		zcameraPos = (*character).getPosz() + 30*sin(-(*character).getRotation() + M_PI);
+		xcameraFocus = (*character).getPosx();
+		ycameraFocus = (*character).getPosy();
+		zcameraFocus = (*character).getPosz();
+	}
+
+	gluLookAt(xcameraPos,ycameraPos,zcameraPos,xcameraFocus,ycameraFocus,zcameraFocus,0,1,0);
 
 	glutSwapBuffers();
 }
@@ -70,6 +137,20 @@ void display() {
 void keyboard (unsigned char key, int x, int y) {
 	keystates[key] = true;
 
+	if (key == '1') {
+		resetCameras();
+		cameras[0] = true;
+	}
+
+	if (key == '2') {
+		resetCameras();
+		cameras[2] = true;
+	}
+
+	if (key == '3') {
+		resetCameras();
+		cameras[3] = true;
+	}
 }
 
 void specialkeys (int key, int x, int y) {
@@ -87,33 +168,51 @@ void specialkeysUp (int key, int x, int y) {
 void keysAction() {
 
 	if (keystates['m']) {
-		xcamera++;
+		rcamera++;
 		refresh();
-		gluLookAt(xcamera,ycamera,zcamera,xcamera,0,0,0,1,0);
+		gluLookAt(xcameraPos,ycameraPos,zcameraPos,xcameraFocus,ycameraFocus,zcameraFocus,0,1,0);
 	}
 	if (keystates['n']) {
-		xcamera--;
+		rcamera--;
 		refresh();
-		gluLookAt(xcamera,ycamera,zcamera,xcamera,0,0,0,1,0);
+		gluLookAt(xcameraPos,ycameraPos,zcameraPos,xcameraFocus,ycameraFocus,zcameraFocus,0,1,0);
 	}
 
-	if (keystates['z']) character.setRun(true);
-	else character.setRun(false);
-	if (keystates['x']) character.setShoot(true);
-	else character.setShoot(false);
+	if (keystates['r']) (*character).setRun(true);
+	else (*character).setRun(false);
+	if (keystates['x']) (*character).setShoot(true);
+	else (*character).setShoot(false);
 
-	if (keystates[GLUT_KEY_RIGHT]){
-		character.movePosX(1);
-		character.resetInterpx();
+	if (keystates['w']) {
+		(*character).movePosXZ(3);
+		(*character).resetInterpx();
+
+		if (cameras[1]) {
+			resetCameras();
+			cameras[0] = true;
+		}
 	}
-	if (keystates[GLUT_KEY_LEFT]) {
-		character.movePosX(-1);
-		character.resetInterpx();
-	} 
-	if (keystates[GLUT_KEY_UP]) {
-		character.movePosY(10);
-		character.resetInterpy();
-		character.setJumped();
+	if (keystates['s']) {
+		(*character).movePosXZ(-3);
+		(*character).resetInterpx();
+
+		if (cameras[0]) {
+			resetCameras();
+			cameras[1] = true;
+		}
+	}
+
+	if (keystates['a']) {
+		(*character).rotate(5);
+	}
+	if (keystates['d']) {
+		(*character).rotate(-5);
+	}
+
+	if (keystates[' ']) {
+		(*character).movePosY(10);
+		(*character).resetInterpy();
+		(*character).setJumped();
 	}
 }
 
@@ -122,97 +221,112 @@ void nextFrame(int f) {
 
 	keysAction();
 
-	character.updatePos();
-	character.updateState();
-	
-	if (character.getPosx() < 0) xcamera = 0;
-	else if (character.getPosx() > x_max*(qnt-1)) xcamera = x_max*(qnt-1);
-	else xcamera = character.getPosx();
+	(*character).updatePos();
+	(*character).updateState();
+	(*character).animate();
 
-	refresh();
-	gluLookAt(xcamera,ycamera,zcamera,xcamera,0,0,0,1,0);
-
-	for (int i = 0; i < qnt; i++) {
-		if (x_min + 18 * i < xcamera and xcamera < x_max + 18 * i){
-			previousScreen = i-1;
-			currentScreen = i;
-			nextScreen = i+1;
-			if (currentScreen > furthestScreen) {
-				furthestScreen = currentScreen;
-				newScreen = true;
-			}
-		}
+	if (frame > 120) {
+		generateCoins();
+		generateBullets();
+		generateHoles();
 	}
-
-	generateScreen(nextScreen);
 	
-	character.animate();
 
 	for (int i = 0; i < coins.size(); i++) {
-		if (coins[i].getPosx() > xcamera + x_min && coins[i].getPosx() < xcamera + x_max) {
-			coins[i].animate();	
-			if (character.checkcolision(coins[i].getHitbox())) {
-				character.addPoint(coins[i].getPoint());
-				coins.erase(coins.begin()+i);
-			}
+		coins[i].animate();
+		if ((*character).checkcolision(coins[i].getHitbox())) {
+			(*character).addPoint(coins[i].getPoint());
+			coins.erase(coins.begin()+i);
 		}
 	}
 
 	for (int i = 0; i < bullets.size(); i++) {
-		if (bullets[i].getPosx() > xcamera + x_min && bullets[i].getPosx() < xcamera + x_max) {
-			bullets[i].animate();
-			if (character.checkcolision(bullets[i].getHitbox())) {
-				character.addPoint(-5);
-				bullets.erase(bullets.begin()+i);
-			}
+		bullets[i].animate();
+		if ((*character).checkcolision(bullets[i].getHitbox())) {
+			(*character).addPoint(-5);
+			bullets.erase(bullets.begin()+i);
 		}
 	}
 
 	for (int i = 0; i < holes.size(); i++) {
-		if (holes[i].getPosx() > xcamera + x_min && holes[i].getPosx() < xcamera + x_max) {
-			holes[i].animate();
-			if (character.checkcolision(holes[i].getHitbox())) {
-				character.addPoint(-5);
-				holes.erase(holes.begin()+i);
-			}
+		holes[i].animate();
+		if ((*character).checkcolision(holes[i].getHitbox())) {
+			(*character).addPoint(-5);
+			holes.erase(holes.begin()+i);
 		}
 	}
 
-	if (character.getPoints() < 0 || character.getPosx() > xcamera + x_max) exit(0);
+	if ((*character).getPoints() < 0 || (*character).getPoints() >= 100) exit(0);
 
 	glutPostRedisplay();
     glutTimerFunc(16,nextFrame,0);
 }
 
-void generateScreen(int screen) {
-	if (newScreen) {
-		newScreen = false;
+void generateCoins() {
 
-		int x, y;
+	if (coins.size() < coinsLimit) {
 
-		coinsNumber = 1 + std::rand() % 5;
+		int x, y, z;
+		int coinsNumber = 1 + std::rand() % 5;
+
 		for (int i = 0; i < coinsNumber; i++) {
-			x = x_min + 18 * screen + std::rand() % (int)(2*x_max);
-			y = -(std::rand() % 9);
+			x = (std::rand() % (int)(skyboxSize/2)) * pow(-1, std::rand() % 2);
+			y = 2 + std::rand() % 20;
+			z = (std::rand() % (int)(skyboxSize/2)) * pow(-1, std::rand() % 2);
 			int p = std::rand() % 4;
-			coins.push_back(Coin(x,y,9,p));
+			coins.push_back(Coin(x,y,z,p,coinTexture));
 		}
-
-		x = x_min + 18 * screen + std::rand() % (int)(2*x_max);
-		int aux = std::rand() % 10;
-		if (aux < 5) y = -4;
-		else y = -8;
-		bullets.push_back(Bullet(x,y,9));
-
-		x = x_min + 18 * screen + std::rand() % (int)(2*x_max);
-		holes.push_back(Hole(x,-10,0.5));
 	}
+}
+
+void generateBullets() {
+
+	checkBulletsOut();
+
+	if (bullets.size() < bulletsLimit) {
+
+		int x, y, z;
+		int bulletsNumber = 1 + std::rand() % 10;
+
+		for (int i = 0; i < bulletsNumber; i++) {
+			x = (std::rand() % (int)(skyboxSize/2)) * pow(-1, std::rand() % 2);
+			y = 2 + std::rand() % 20;
+			z = (std::rand() % (int)(skyboxSize/2)) * pow(-1, std::rand() % 2);
+			bullets.push_back(Bullet(x,y,z,0.3 * -x/abs(x),0.3 * -z/abs(z),bulletTexture));
+		}
+	}
+}
+
+void checkBulletsOut() {
+	for (int i = 0; i < bullets.size(); i++) {
+		if (bullets[i].getPosx() > skyboxSize/2 || bullets[i].getPosx() < -skyboxSize/2 || bullets[i].getPosz() > skyboxSize/2 || bullets[i].getPosz() < -skyboxSize/2)
+			bullets.erase(bullets.begin()+i);
+	}
+}
+
+void generateHoles() {
+	if (holes.size() < holesLimit) {
+
+		int x, y, z;
+		int holesNumber = 1 + std::rand() % 5;
+
+		for (int i = 0; i < holesNumber; i++) {
+			x = (std::rand() % (int)(skyboxSize/2) - 4 * holeSize) * pow(-1, std::rand() % 2);
+			y = 0;
+			z = (std::rand() % (int)(skyboxSize/2) - 4 * holeSize) * pow(-1, std::rand() % 2);
+			holes.push_back(Hole(x,y,z,holeSize,holeSize,holeTexture));
+		}
+	}
+}
+
+void resetCameras() {
+	for (int i = 0; i < sizeof(cameras) / sizeof(bool); i++) cameras[i] = false;
 }
 
 void refresh() {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(60,1,2.0,50.0);
+	gluPerspective(70,1,2.0,1000.0);
 }
 
 void reshape(int w, int h) {
@@ -224,26 +338,104 @@ void reshape(int w, int h) {
 
 	glViewport (0, 0, (GLsizei) w, (GLsizei) h);
 	refresh();
-	gluLookAt(xcamera,ycamera,zcamera,xcamera,0,0,0,1,0);
+	gluLookAt(xcameraPos,ycameraPos,zcameraPos,xcameraFocus,ycameraFocus,zcameraFocus,0,1,0);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glutPostRedisplay();
 }
 
+unsigned int loadTexture(const char *imagePath) {
+	int width, height, nrChannels;
+	unsigned char *data;
+	unsigned int texId;
+
+	glGenTextures(1, &texId);
+
+	glBindTexture(GL_TEXTURE_2D, texId);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	data = stbi_load(imagePath, &width, &height, &nrChannels, 0);
+
+	if (data) {
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	} else {
+		 std::cout << "Failed to load texture" << std::endl;
+		 std::cout << stbi_failure_reason() << std::endl;
+	}
+
+	stbi_image_free(data);
+
+	return texId;
+}
+
 void init() {
-	glClearColor(0, 0, 0, 1);
+
+	glClearColor(0, 0, 0, 1); // #####
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
+	glEnable(GL_COLOR_MATERIAL);
+	
+	glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight0);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight0);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, specularLight0);
+	glLightfv(GL_LIGHT0, GL_POSITION, posLight0);
+
+	glLightfv(GL_LIGHT1, GL_AMBIENT, ambientLight1);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuseLight1);
+	glLightfv(GL_LIGHT1, GL_SPECULAR, specularLight1);
+	glLightfv(GL_LIGHT1, GL_POSITION, posLight1);
+
+
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glEnable(GL_LIGHT1);
+
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-
+	glEnable(GL_TEXTURE_2D);
+	
 	for (int i = 0; i < 256; i++) keystates[i] = false;
+
+	characterTexture.push_back(loadTexture((path + "blank.jpg").c_str()));
+	skyboxTexture.push_back(loadTexture((path + "blank.jpg").c_str()));
+	coinTexture.push_back(loadTexture((path + "blank.jpg").c_str()));
+	bulletTexture.push_back(loadTexture((path + "blank.jpg").c_str()));
+	holeTexture.push_back(loadTexture((path + "blank.jpg").c_str()));
+
+	characterTexture.push_back(loadTexture((path + "shirt.jpg").c_str()));
+	characterTexture.push_back(loadTexture((path + "skin.jpg").c_str()));
+	characterTexture.push_back(loadTexture((path + "short.jpg").c_str()));
+	
+	skyboxTexture.push_back(loadTexture((path + "grass.jpg").c_str()));
+	skyboxTexture.push_back(loadTexture((path + "0.jpg").c_str()));
+	skyboxTexture.push_back(loadTexture((path + "90.jpg").c_str()));
+	skyboxTexture.push_back(loadTexture((path + "180.jpg").c_str()));
+	skyboxTexture.push_back(loadTexture((path + "270.jpg").c_str()));
+
+	coinTexture.push_back(loadTexture((path + "coin0.jpg").c_str()));
+	coinTexture.push_back(loadTexture((path + "coin1.jpg").c_str()));
+	coinTexture.push_back(loadTexture((path + "coin2.jpg").c_str()));
+	coinTexture.push_back(loadTexture((path + "coin3.jpg").c_str()));
+
+	bulletTexture.push_back(loadTexture((path + "bullet.jpg").c_str()));
+
+	holeTexture.push_back(loadTexture((path + "hole.jpg").c_str()));
+
+	static Skybox s(skyboxSize, skyboxTexture);
+	static Character c(0,8,0,characterTexture);
+	
+	skybox = &s;
+	character = &c;
 }
 
 int main(int argc, char** argv) {

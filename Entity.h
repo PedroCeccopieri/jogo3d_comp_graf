@@ -3,13 +3,15 @@
 
 #include <GL/glut.h>
 #include <iostream>
+#include <vector>
 
 #include "utils.h"
-
 
 class Entity {
 
     protected:
+
+        std::vector<unsigned int> texId;
 
         float posx, posy, posz;
 
@@ -18,14 +20,15 @@ class Entity {
         float scale;
         float wHitbox, hHitbox, dHitbox;
 
-        double hitbox[12] = {0,0,0, 0,0,0, 0,0,0, 0,0,0};
+        double hitbox[24] = {0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0, 0,0,0};
 
     public:
 
-        Entity(float x, float y, float z) {
+        Entity(float x, float y, float z, std::vector<unsigned int> tId) {
             posx = x;
             posy = y;
             posz = z;
+            texId = tId;
         }
 
         float getPosx() {
@@ -36,20 +39,22 @@ class Entity {
             return posy;
         }
 
+        float getPosz() {
+            return posz;
+        }
+
         double* getHitbox() {
             return hitbox;
         }
 
         void showHitbox() {
+            
+            glBindTexture(GL_TEXTURE_2D, texId[0]);
 
             glPushMatrix();
 
             glTranslatef(posx,posy,posz);
             glScalef(scale,scale,scale);
-
-            // glRotatef(axisx,1,0,0); // rotação corpo x
-            // glRotatef(axisy,0,1,0); // rotação corpo y
-            // glRotatef(axisz,0,0,1); // rotação corpo z
 
             glScalef(wHitbox,hHitbox,dHitbox);
             color(255,255,255);
@@ -68,38 +73,37 @@ class Entity {
             color(0,0,255);
             glVertex3f(hitbox[9],hitbox[10],hitbox[11]);
             glEnd();
+
+            glPointSize(10);
+            glBegin(GL_POINTS);
+            color(255,255,0);
+            glVertex3f(hitbox[12],hitbox[13],hitbox[14]);
+            color(255,0,0);
+            glVertex3f(hitbox[15],hitbox[16],hitbox[17]);
+            color(0,255,0);
+            glVertex3f(hitbox[18],hitbox[19],hitbox[20]);
+            color(0,0,255);
+            glVertex3f(hitbox[21],hitbox[22],hitbox[23]);
+            glEnd();
         }
 
         void updateHitbox() {
             int i, j, k;
-            int *a = NULL;
-
-            if (0 <= (int)axisy % 360 && (int)axisy % 360 < 90) {
-                int b[4] = {3,0,1,2};
-                a = b;
-            } else if (90 <= (int)axisy % 360 && (int)axisy % 360 < 180) {
-                int b[4] = {7,4,0,3};
-                a = b;
-            } else if (180 <= (int)axisy % 360 && (int)axisy % 360 < 270) {
-                int b[4] = {6,5,4,7};
-                a = b;
-            } else if (270 <= (int)axisy % 360 && (int)axisy % 360 < 360) {
-                int b[4] = {2,1,5,6};
-                a = b;
-            }
 
             int ord[24] = {-1,-1,1, 1,-1,1, 1,1,1, -1,1,1, -1,-1,-1, 1,-1,-1, 1,1,-1, -1,1,-1};
 
-            for (int c = 0;  c < 12; c += 3) {
-
-                int d = a[(c+1)/3]*3;
+            for (int c = 0;  c < 24; c += 3) {
                 
-                i = ord[d]; j = ord[d+1]; k = ord[d+2];
+                i = ord[c]; j = ord[c+1]; k = ord[c+2];
 
                 hitbox[c] = 0.5 * i * wHitbox * scale + posx;
                 hitbox[c+1] = 0.5 * j * hHitbox * scale + posy;
                 hitbox[c+2] = 0.5 * k * dHitbox * scale + posz;
             }
+        }
+
+        void printHitbox() {
+            for (int i = 0; i < 24; i += 3) std::cout << "(" << hitbox[i] << "," << hitbox[i+1] << "," << hitbox[i+2] << ")" << std::endl;        
         }
 
 };

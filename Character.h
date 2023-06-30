@@ -10,7 +10,7 @@ class Character:public Entity {
         int points = 0;
         
         int animation = 0, da = 5;
-        int interpx = INTERX, interpy = INTERY;
+        int interpxz = INTERXZ, interpy = INTERY;
 
         bool run = false, shooting = false, jumped = false;
         int state = 0;
@@ -19,7 +19,8 @@ class Character:public Entity {
 
         float floor = FLOOR;
 
-        float dposx, dposy, dposz;
+        float rotationAngle = 0;
+        float dposxz, dposy;
 
         float neckx = 0, necky = 0, neckz = 0;
         float headx = 0, heady = 0, headz = 0;
@@ -35,10 +36,10 @@ class Character:public Entity {
 
     public:
 
-        Character(float x, float y, float z) : Entity(x,y,z) {
-            scale = 0.25;
-            axisx = 0, axisy = 90, axisz = 0;
-            wHitbox = 4.5, hHitbox = 14.4, dHitbox = 6;
+        Character(float x, float y, float z, std::vector<unsigned int> tId) : Entity(x,y,z,tId) {
+            scale = 1;
+            axisx = 0, axisy = 0, axisz = 0;
+            wHitbox = 6, hHitbox = 14.4, dHitbox = 6;
         }
 
         void addPoint(int p) {
@@ -49,8 +50,12 @@ class Character:public Entity {
             return points;
         }
 
+        float getRotation() {
+            return rotationAngle*M_PI/180;
+        }
+
         void resetInterpx() {
-            interpx = 0;
+            interpxz = 0;
         }
 
         void resetInterpy() {
@@ -65,12 +70,17 @@ class Character:public Entity {
             shooting = s;
         }
 
-        void movePosX(int dx) {
+        void movePosXZ(int dxz) {
 
-            dposx = dx;
+            dposxz = dxz;
         
-            if (dx > 0) axisy = 90;
-            if (dx < 0) axisy = 270;
+            if (dxz > 0) axisy = 90;
+            if (dxz < 0) axisy = 270;
+        }
+
+        void rotate(int r) {
+            if (rotationAngle + r < 0) rotationAngle = 360 - r;
+            else rotationAngle += r;
         }
 
         void movePosY(int dy) {
@@ -109,32 +119,30 @@ class Character:public Entity {
         }
         
         void updateState() {
-            if (interpx < INTERX) {
-                interpx++;
+            if (interpxz < INTERXZ) {
+                interpxz++;
             }
 
             if (interpy < INTERY) {
                 interpy++;
             }
 
-            if (interpx < INTERX && !run && !shooting) setState(1);
-            else if (interpx < INTERX && run && !shooting) setState(2);
-            else if (interpx == INTERX && shooting) setState(3);
-            else if (interpx < INTERX && !run && shooting) setState(4);
-            else if (interpx < INTERX && run && shooting) setState(5);
+            if (interpxz < INTERXZ && !run && !shooting) setState(1);
+            else if (interpxz < INTERXZ && run && !shooting) setState(2);
+            else if (interpxz == INTERXZ && shooting) setState(3);
+            else if (interpxz < INTERXZ && !run && shooting) setState(4);
+            else if (interpxz < INTERXZ && run && shooting) setState(5);
             else setState(0);
         }
 
         void showHitbox() {
 
+            glBindTexture(GL_TEXTURE_2D, texId[0]);
+
             glPushMatrix();
 
             glTranslatef(posx,posy + jumpHeight,posz);
             glScalef(scale,scale,scale);
-
-            glRotatef(axisz,0,0,1); // rotação corpo z
-            glRotatef(axisy,0,1,0); // rotação corpo y
-            // glRotatef(axisx,1,0,0); // rotação corpo x
 
             glScalef(wHitbox,hHitbox,dHitbox);
             color(255,255,255);
@@ -153,50 +161,53 @@ class Character:public Entity {
             color(0,0,255);
             glVertex3f(hitbox[9],hitbox[10],hitbox[11]);
             glEnd();
+
+            glPointSize(10);
+            glBegin(GL_POINTS);
+            color(255,255,0);
+            glVertex3f(hitbox[12],hitbox[13],hitbox[14]);
+            color(255,0,0);
+            glVertex3f(hitbox[15],hitbox[16],hitbox[17]);
+            color(0,255,0);
+            glVertex3f(hitbox[18],hitbox[19],hitbox[20]);
+            color(0,0,255);
+            glVertex3f(hitbox[21],hitbox[22],hitbox[23]);
+            glEnd();
         }
 
         void updateHitbox() {
             int i, j, k;
-            int *a = NULL;
-
-            if (0 <= (int)axisy % 360 && (int)axisy % 360 < 90) {
-                int b[4] = {3,0,1,2};
-                a = b;
-            } else if (90 <= (int)axisy % 360 && (int)axisy % 360 < 180) {
-                int b[4] = {7,4,0,3};
-                a = b;
-            } else if (180 <= (int)axisy % 360 && (int)axisy % 360 < 270) {
-                int b[4] = {6,5,4,7};
-                a = b;
-            } else if (270 <= (int)axisy % 360 && (int)axisy % 360 < 360) {
-                int b[4] = {2,1,5,6};
-                a = b;
-            }
 
             int ord[24] = {-1,-1,1, 1,-1,1, 1,1,1, -1,1,1, -1,-1,-1, 1,-1,-1, 1,1,-1, -1,1,-1};
 
-            for (int c = 0;  c < 12; c += 3) {
-
-                int d = a[(c+1)/3]*3;
+            for (int c = 0;  c < 24; c += 3) {
                 
-                i = ord[d]; j = ord[d+1]; k = ord[d+2];
+                i = ord[c]; j = ord[c+1]; k = ord[c+2];
 
-                hitbox[c] = (((0.5*i * wHitbox)*cos(axisy*M_PI/180) + (0.5*k * dHitbox)*sin(axisy*M_PI/180))*cos(axisz*M_PI/180) - (0.5*j * hHitbox)*sin(axisz*M_PI/180)) * scale + posx;
-	            hitbox[c+1] = (((0.5*i * wHitbox)*cos(axisy*M_PI/180) + (0.5*k * dHitbox)*sin(axisy*M_PI/180))*sin(axisz*M_PI/180) + (0.5*j * hHitbox)*cos(axisz*M_PI/180)) * scale + posy + jumpHeight;
-	            hitbox[c+2] = ((-(0.5*i * wHitbox)*sin(axisy*M_PI/180) + (0.5*k * dHitbox)*cos(axisy*M_PI/180))) * scale + posz;
+                hitbox[c] = 0.5 * i * wHitbox * scale + posx;
+                hitbox[c+1] = 0.5 * j * hHitbox * scale + posy + jumpHeight;
+                hitbox[c+2] = 0.5 * k * dHitbox * scale + posz;
             }
         }
 
-        bool checkcolision(double hb[12]) {
-	
-            return !(hb[0] > hitbox[9] || hb[9] < hitbox[0] || hb[1] < hitbox[4] || hb[4] > hitbox[1]);
+        bool checkcolision(double hb[24]) {
+            
+            return !(hitbox[0] >= hb[3] || hitbox[3] <= hb[0] || hitbox[1] >= hb[10] || hitbox[10] <= hb[1] || hitbox[14] >= hb[2] || hitbox[2] <= hb[14]);
 
         }
 
         void updatePos() {
-            if (interpx < INTERX) {
-                if (state == 1 || state == 4) posx += dposx/(2*INTERX);
-                if (state == 2 || state == 5) posx += dposx/INTERX;
+            if (interpxz < INTERXZ) {
+
+                // std::cout << "state " << state << std::endl;
+                if (state == 1 || state == 4) {
+                    posx += dposxz/(2*INTERXZ)*cos(rotationAngle*M_PI/180);
+                    posz += -dposxz/(2*INTERXZ)*sin(rotationAngle*M_PI/180);
+                }
+                if (state == 2 || state == 5) {
+                    posx += dposxz/(INTERXZ)*cos(rotationAngle*M_PI/180);
+                    posz += -dposxz/(INTERXZ)*sin(rotationAngle*M_PI/180);
+                }
             }
 
             if (interpy < INTERY) {
@@ -280,16 +291,16 @@ class Character:public Entity {
         void draw() {
 
             glPushMatrix(); // personagem {
-            
+    
             glTranslatef(posx,posy + jumpHeight,posz);
             glScalef(scale,scale,scale);
-            
-            glRotatef(axisz,0,0,1); // rotação corpo z
-            glRotatef(axisy,0,1,0); // rotação corpo y
-            // glRotatef(axisx,1,0,0); // rotação corpo x
 
+            glRotatef(rotationAngle,0,1,0);
+            glRotatef(axisy,0,1,0); // rotação corpo y
+
+            glBindTexture(GL_TEXTURE_2D, texId[1]);
+            
             glPushMatrix(); // corpo {
-            color(0,100,140);
             glScalef(2,4,2);
             drawCube(true);
             glPopMatrix(); // }
@@ -301,15 +312,15 @@ class Character:public Entity {
             glRotatef(necky,0,1,0); // rotação pescoço y
             glRotatef(neckz,0,0,1); // rotação pescoço z
 
+            glBindTexture(GL_TEXTURE_2D, texId[2]);
+
             glPushMatrix(); // pescoço {
-            color(255,190,150);
             glTranslatef(0,0.5,0);
             glScalef(1,1,1);
             drawCube(true);
             glPopMatrix(); // }
 
             glPushMatrix(); // cabeça {
-            color(255,190,150);
             glTranslatef(0,1,0);
             glRotatef(headx,1,0,0);
             glRotatef(heady,0,1,0);
@@ -327,17 +338,18 @@ class Character:public Entity {
             glRotatef(rarmx,1,0,0); // rotação braço direito x
             glRotatef(rarmy,0,1,0); // rotação braço direito y
             glRotatef(rarmz,0,0,1); // rotação braço direito z
+
+            glBindTexture(GL_TEXTURE_2D, texId[1]);
             
             glPushMatrix(); // braço direito {
-            color(0,100,140);
             glTranslatef(0.5,-1,0);
             glScalef(1,2,2);
             drawCube(true);
             glPopMatrix(); // }
 
+            glBindTexture(GL_TEXTURE_2D, texId[2]);
+
             glPushMatrix(); // anti-braço direito {
-            //color(255,190,150);
-            color(0,0,255);
             glTranslatef(0.5,-2,0);
             glRotatef(-rforearmx,1,0,0);
             glRotatef(-rforearmy,0,1,0);
@@ -355,16 +367,18 @@ class Character:public Entity {
             glRotatef(-larmx,1,0,0); // rotação braço esquerdo x
             glRotatef(-larmy,0,1,0); // rotação braço esquerdo y
             glRotatef(-larmz,0,0,1); // rotação braço esquerdo z
+
+            glBindTexture(GL_TEXTURE_2D, texId[1]);
             
             glPushMatrix(); // braço esquerdo {
-            color(0,100,140);
             glTranslatef(-0.5,-1,0);
             glScalef(1,2,2);
             drawCube(true);
             glPopMatrix(); // }
 
+            glBindTexture(GL_TEXTURE_2D, texId[2]);
+
             glPushMatrix(); // anti-braço esquerdo {
-            color(255,190,150);
             glTranslatef(-0.5,-2,0);
             glRotatef(-lforearmx,1,0,0);
             glRotatef(-lforearmy,0,1,0);
@@ -382,16 +396,18 @@ class Character:public Entity {
             glRotatef(-legsx,1,0,0); // rotação perna direita x
             glRotatef(-legsy,0,1,0); // rotação perna direita y
             glRotatef(-legsz,0,0,1); // rotação perna direita z
+
+            glBindTexture(GL_TEXTURE_2D, texId[3]);
             
             glPushMatrix(); // perna direita {
-            color(255,0,0);
             glTranslatef(0,-1.25,0);
             glScalef(1,2.5,2);
             drawCube(true);
             glPopMatrix(); // }
 
+            glBindTexture(GL_TEXTURE_2D, texId[2]);
+
             glPushMatrix(); // joelho direito {
-            color(255,190,150);
             glTranslatef(0,-2.5,0);
             glRotatef(kneesx,1,0,0);
             glRotatef(kneesy,0,1,0);
@@ -409,17 +425,18 @@ class Character:public Entity {
             glRotatef(legsx,1,0,0); // rotação perna esquerda x
             glRotatef(legsy,0,1,0); // rotação perna esquerda y
             glRotatef(legsz,0,0,1); // rotação perna esquerda z
+
+            glBindTexture(GL_TEXTURE_2D, texId[3]);
             
             glPushMatrix(); // perna esquerda {
-            color(255,0,0);
             glTranslatef(0,-1.25,0);
             glScalef(1,2.5,2);
             drawCube(true);
             glPopMatrix(); // }
 
+            glBindTexture(GL_TEXTURE_2D, texId[2]);
+
             glPushMatrix(); // joelho esquerdo {
-            // color(255,190,150);
-            color(255,255,0);
             glTranslatef(0,-2.5,0);
             glRotatef(kneesx,1,0,0);
             glRotatef(kneesy,0,1,0);

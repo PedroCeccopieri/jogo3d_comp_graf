@@ -10,11 +10,11 @@ class Coin: public Entity {
 
     public:
 
-        Coin(float x, float y, float z, int ct): Entity(x,y,z) {
+        Coin(float x, float y, float z, int ct, std::vector<unsigned int> tId): Entity(x,y,z,tId) {
             
             coinType = ct;
-            scale = 0.5;
-            wHitbox = 1.25, hHitbox = 1.25, dHitbox = 1.25;
+            scale = 1.5;
+            wHitbox = 1.75, hHitbox = 1.75, dHitbox = 1.75;
         }
 
         int getPoint() {
@@ -51,10 +51,7 @@ class Coin: public Entity {
 
             glScalef(wHitbox,hHitbox,dHitbox);
 
-            if (coinType == 0) color(255,255,0);
-            else if (coinType == 1) color(0,0,255);
-            else if (coinType == 2) color(255,125,0);
-            else if (coinType == 3) color(255,0,0);
+            glBindTexture(GL_TEXTURE_2D, texId[coinType+1]);
             drawCube(true);
 
             glPopMatrix();

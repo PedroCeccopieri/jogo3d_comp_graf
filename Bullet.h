@@ -6,25 +6,32 @@
 class Bullet: public Entity {
     private:
 
-        float velocity = 0.1;
+        float velocityx;
+        float velocityz;
 
     public:
 
-        Bullet(float x, float y, float z): Entity(x,y,z) {
+        Bullet(float x, float y, float z, float vx, float vz, std::vector<unsigned int> tId) : Entity(x,y,z,tId) {
             
-            scale = 1;
-            wHitbox = 1.25, hHitbox = 1.25, dHitbox = 1.25;
+            scale = 2;
+            wHitbox = 2.25, hHitbox = 2.25, dHitbox = 2.25;
+            velocityx = vx, velocityz = vz;
+
         }
 
         void animate() {
 
-            posx -= velocity;
+            posx += velocityx;
+            posz += velocityz;
 
             updateHitbox();
         }
 
         void draw() {
 
+            color(255,255,255);
+            glBindTexture(GL_TEXTURE_2D, texId[1]);
+            
             glPushMatrix();
 
             glTranslatef(posx,posy,posz);
@@ -32,8 +39,8 @@ class Bullet: public Entity {
 
             glScalef(wHitbox,hHitbox,dHitbox);
 
-            color(50,50,50);
             drawCube(true);
+            // glutSolidTeapot(1);
 
             glPopMatrix();
         }
